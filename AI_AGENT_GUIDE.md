@@ -87,7 +87,15 @@ services:
 ---
 ```
 
-## 7. Verification
+## 7. Visual Templates
+
+**CRITICAL**: All generated UI must follow the visual patterns defined in `specs/templates/`.
+
+-   **Standard Forms**: Use `specs/templates/standard-form.md` for layout, spacing, and input styles.
+-   **Consistency**: Do not invent new styles. Reuse the defined constants and patterns.
+-   **New Templates**: If a new pattern is needed, create a new template file in `specs/templates/` first.
+
+## 8. Verification
 
 After generating code:
 1.  Ensure all imports are correct (relative paths).
