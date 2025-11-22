@@ -11,8 +11,10 @@ This directory contains specifications generated from the prototype or client re
 | `main-menu` | Main Menu | Central dashboard with navigation to modules. | Draft |
 | `task-creation` | Task Creation | Screen for creating tasks via voice or text. | Draft |
 | `quality-control` | Quality Control | Dashboard for quality inspections. | Draft |
-| `protection-crop` | Plant Protection | Reporting diseases and protection measures (from TA). | Draft |
-| `technology-card` | Technology Card | Viewing agronomic tech cards and stages (from TA). | Draft |
+| `protection-crop-list` | Plant Protection List | Dashboard for viewing disease reports (DiseaseMapTab). | Draft |
+| `protection-crop-form` | Plant Protection Form | Create/Edit disease reports (DiseaseMonitoring). | Draft |
+| `protection-crop-details` | Plant Protection Details | Detailed view of a report (DiseaseDetailsPage). | Draft |
+| `technology-card` | Technology Card | Viewing agronomic tech cards and stages. | Draft |
 
 ## Workflow
 1. Review the draft markdown file.

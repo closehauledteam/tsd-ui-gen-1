@@ -1,7 +1,7 @@
 ---
 screenId: technology-card
 title: "Technology Card"
-version: 1
+version: 2
 uiTarget: "react-native"
 status: "draft"
 permissions:
@@ -18,28 +18,35 @@ Displays agronomic technology cards and their stages. Based on SQL schema `growe
 - **Title**: "Технологическая карта"
 - **Subtitle**: Card Name (e.g., "Tomato Summer 2025")
 
-### Card Details
-- **Info Section**:
-  - Climate Zone
-  - Season
-  - Difficulty Level
-  - Duration (Days)
+### Card Details (Summary)
+- **Info Grid**:
+  - **Climate Zone**: Text.
+  - **Season**: Text.
+  - **Difficulty**: Text.
+  - **Duration**: Days.
+  - **Article/Hybrid**: Link to Article.
 
-### Stages List
+### Stages List (Timeline)
 - **List Item**:
-  - **Stage Order**: Number (1, 2, 3...)
-  - **Name**: Stage Name
-  - **Duration**: Days
-  - **Conditions**:
-    - Temp (Min/Max)
-    - Humidity (Min/Max)
-    - Lighting (Hours)
-    - Irrigation (ml)
+  - **Order**: Stage Number.
+  - **Name**: Stage Name.
+  - **Phase**: Plant Phase (e.g., "Flowering").
+  - **Duration**: Days.
+  - **Conditions (Collapsible)**:
+    -   Temp: Min-Max °C.
+    -   Humidity: Min-Max %.
+    -   Lighting: Hours.
+    -   Irrigation: ml.
+  - **Resources**:
+    -   Fertilizers (JSON list).
+    -   Procedures (JSON list).
 
 ## Data Model
 - **Card Table**: `grower.technology_card`
 - **Stage Table**: `grower.technology_stage`
+- **Relationships**: One Card -> Many Stages.
 
 ## Flow
-1. User selects a Tech Card from a list (implied).
-2. User views details and stages.
+1. User selects a Tech Card from a list.
+2. User views details and scrolls through stages.
+3. User can tap a stage to view detailed instructions (Procedures).
