@@ -95,18 +95,29 @@ services:
 -   **Consistency**: Do not invent new styles. Reuse the defined constants and patterns.
 -   **New Templates**: If a new pattern is needed, create a new template file in `specs/templates/` first.
 
-## 8. Draft Specifications
+## 8. Technical Assignments
+
+**Purpose**: Store raw requirements or Technical Assignments (TA) received from the client. These serve as the source material for creating Draft Specifications.
+
+-   **Location**: `specs/technical-assignments/`
+-   **Format**: Any (Markdown, Text, PDF, etc., but Markdown preferred for analysis).
+-   **Workflow**:
+    1.  **Ingest**: Save the client's TA into `specs/technical-assignments/`.
+    2.  **Analyze**: AI Agent analyzes the TA to identify screens and flows.
+    3.  **Draft**: Generate Draft Specifications in `specs/drafts/` based on the TA (see Section 9).
+
+## 9. Draft Specifications
 
 **Purpose**: Store specifications generated from client Technical Assignments (TA) that are not yet ready for implementation or linked to code.
 
 -   **Location**: `specs/drafts/`
 -   **Format**: Same Markdown format as active specs (see Section 6).
 -   **Workflow**:
-    1.  **Generate**: Create a draft spec in `specs/drafts/` based on client requirements.
+    1.  **Generate**: Create a draft spec in `specs/drafts/` based on client requirements (from Section 8).
     2.  **Review**: User reviews the draft.
     3.  **Activate**: When approved, move the file to `specs/screens/` and proceed with code generation (Section 3).
 
-## 9. Role-Based Access Control (RBAC)
+## 10. Role-Based Access Control (RBAC)
 
 Security is enforced at multiple layers.
 
@@ -131,7 +142,7 @@ Security is enforced at multiple layers.
 ### 4. Specifications
 -   **Define Rules**: Explicitly state required permissions in the Markdown spec (e.g., "Approve Button: Visible only for Managers").
 
-## 10. Verification
+## 11. Verification
 
 After generating code:
 1.  Ensure all imports are correct (relative paths).
