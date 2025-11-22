@@ -95,7 +95,18 @@ services:
 -   **Consistency**: Do not invent new styles. Reuse the defined constants and patterns.
 -   **New Templates**: If a new pattern is needed, create a new template file in `specs/templates/` first.
 
-## 8. Verification
+## 8. Draft Specifications
+
+**Purpose**: Store specifications generated from client Technical Assignments (TA) that are not yet ready for implementation or linked to code.
+
+-   **Location**: `specs/drafts/`
+-   **Format**: Same Markdown format as active specs (see Section 6).
+-   **Workflow**:
+    1.  **Generate**: Create a draft spec in `specs/drafts/` based on client requirements.
+    2.  **Review**: User reviews the draft.
+    3.  **Activate**: When approved, move the file to `specs/screens/` and proceed with code generation (Section 3).
+
+## 9. Verification
 
 After generating code:
 1.  Ensure all imports are correct (relative paths).
