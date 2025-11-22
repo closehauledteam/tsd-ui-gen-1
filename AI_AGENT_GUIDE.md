@@ -106,7 +106,32 @@ services:
     2.  **Review**: User reviews the draft.
     3.  **Activate**: When approved, move the file to `specs/screens/` and proceed with code generation (Section 3).
 
-## 9. Verification
+## 9. Role-Based Access Control (RBAC)
+
+Security is enforced at multiple layers.
+
+### 1. Service Layer (Source of Truth)
+-   **`AuthService`**: The single source of truth for user identity and permissions.
+-   **Methods**: Use `getCurrentUser()`, `hasPermission(p)`, and `hasRole(r)`.
+
+### 2. Business Logic (Enforcement)
+-   **Flow Hooks**: Security checks MUST happen here.
+-   **Pattern**:
+    ```typescript
+    if (!auth.hasPermission('APPROVE_RECEIPT')) {
+      throw new Error('Access Denied');
+    }
+    ```
+
+### 3. UI Layer (Visual Feedback)
+-   **Dumb Components**: `FormUI` components do **NOT** access `AuthService`.
+-   **Props**: Pass permissions as boolean props (e.g., `canApprove: boolean`).
+-   **Container**: The `Screen` container connects `AuthService` to the `FormUI` props.
+
+### 4. Specifications
+-   **Define Rules**: Explicitly state required permissions in the Markdown spec (e.g., "Approve Button: Visible only for Managers").
+
+## 10. Verification
 
 After generating code:
 1.  Ensure all imports are correct (relative paths).
