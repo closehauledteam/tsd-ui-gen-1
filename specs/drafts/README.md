@@ -8,6 +8,9 @@ This directory contains specifications generated from the prototype or client re
 |-----------|-------|-------------|--------|
 | `entry-selection` | Entry Selection | Landing screen to choose between Mobile and Web. | Draft |
 | `auth-login` | Authentication | Mobile login screen via phone number. | Draft |
+| `main-menu` | Main Menu | Central dashboard with navigation to modules. | Draft |
+| `task-creation` | Task Creation | Screen for creating tasks via voice or text. | Draft |
+| `quality-control` | Quality Control | Dashboard for quality inspections. | Draft |
 
 ## Workflow
 1. Review the draft markdown file.
