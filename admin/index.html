@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Specs Editor - Admin</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" data-name="vs/editor/editor.main"
+    href="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/editor/editor.main.min.css">
+</head>
+
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📝 Screen Specifications Editor</h1>
+      <div class="header-controls">
+        <select id="sourceSelector" class="source-selector">
+          <option value="drafts">Drafts</option>
+          <option value="screens">Screens</option>
+        </select>
+        <button id="codeGenBtn" class="action-btn" disabled>🔨 CodeGen</button>
+        <button id="previewBtn" class="action-btn" disabled>👁️ Preview</button>
+        <button id="saveBtn" class="save-btn" disabled>💾 Save</button>
+      </div>
+    </div>
+
+    <div class="main">
+      <!-- Left Panel: Modules Tree -->
+      <div class="panel left-panel">
+        <div class="panel-header">
+          <span>Modules</span>
+          <button id="viewToggle" class="view-toggle">📊</button>
+        </div>
+        <div id="moduleTree" class="module-tree"></div>
+      </div>
+
+      <!-- Center Panel: Editor / Graph -->
+      <div class="editor-container">
+        <div id="graphView" class="graph-view" style="display:none;">
+          <div id="flowGraph" class="mermaid"></div>
+        </div>
+        <div id="editor"></div>
+      </div>
+
+      <!-- Right Panel: Services Tree -->
+      <div class="panel right-panel">
+        <div class="panel-header">Available Services</div>
+        <div id="servicesTree" class="services-tree"></div>
+      </div>
+    </div>
+
+    <div id="statusBar" class="status-bar">Ready</div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
+  <script>
+    let editor;
+    let currentSpec = null;
+    let currentSource = 'drafts';
+    let originalContent = '';
+    let services = [];
+    let currentScreenId = null;
+
+    const API_BASE = 'http://localhost:3001/api';
+
+    // Initialize Monaco Editor
+    require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' } });
+
+    require(['vs/editor/editor.main'], function () {
+      // Register custom language for spec files (YAML frontmatter + Markdown)
+      monaco.languages.register({ id: 'spec-markdown' });
+
+      monaco.languages.setMonarchTokensProvider('spec-markdown', {
+        tokenizer: {
+          root: [
+            [/^---$/, 'delimiter'],
+            [/^(screenId|title|version|uiTarget|featureDir|uiFile|flowFile|screenFile|services):/, 'keyword'],
+            [/^##?\s+.*$/, 'type'],
+            [/\*\*.*?\*\*/, 'string.strong'],
+            [/\*.*?\*/, 'string.emphasis'],
+            [/`[^`]+`/, 'variable'],
+            [/(AuthService|BlocksService|TaskService)\.\w+/, 'function'],
+            [/\b(AuthService|BlocksService|TaskService)\b/, 'class'],
+          ]
+        }
+      });
+
+
+      editor = monaco.editor.create(document.getElementById('editor'), {
+        value: '# Select a specification from the left panel',
+        language: 'spec-markdown',
+        theme: 'vs-dark',
+        automaticLayout: true,
+        minimap: { enabled: true },
+        fontSize: 14,
+        lineNumbers: 'on',
+        renderWhitespace: 'selection',
+        scrollBeyondLastLine: false,
+        folding: true,
+        showFoldingControls: 'always',
+      });
+
+      // Track changes
+      editor.onDidChangeModelContent(() => {
+        if (currentSpec) {
+          const hasChanges = editor.getValue() !== originalContent;
+          document.getElementById('saveBtn').disabled = !hasChanges;
+        }
+      });
+
+      // Initialize Mermaid
+      mermaid.initialize({ startOnLoad: false, theme: 'dark' });
+
+      // Initialize
+      loadModules();
+      loadServices();
+    });
+
+    // Load modules tree
+    async function loadModules() {
+      try {
+        const response = await fetch(`${API_BASE}/modules?source=${currentSource}`);
+        const modules = await response.json();
+
+        const moduleTree = document.getElementById('moduleTree');
+        moduleTree.innerHTML = modules.map(module => `
+          <div class="module-item">
+            <div class="module-header" data-module="${module.id}">
+              ${getModuleIcon(module.id)} ${module.title} (${module.screens.length})
+            </div>
+            <ul class="module-screens">
+              ${module.screens.map(screen => `
+                <li class="screen-item" data-filename="${screen.filename}" data-screen="${screen.screenId}">
+                  ${screen.title}
+                </li>
+              `).join('')}
+            </ul>
+          </div>
+        `).join('');
+
+        // Add click handlers for module headers
+        document.querySelectorAll('.module-header').forEach(header => {
+          header.addEventListener('click', () => showModuleGraph(header.dataset.module));
+        });
+
+        // Add click handlers for screens
+        document.querySelectorAll('.screen-item').forEach(item => {
+          item.addEventListener('click', () => loadSpec(item.dataset.filename));
+        });
+
+        updateStatus(`Loaded ${modules.length} modules`);
+      } catch (error) {
+        updateStatus('Error loading modules: ' + error.message, 'error');
+      }
+    }
+
+    // Get module icon
+    function getModuleIcon(moduleId) {
+      const icons = {
+        'common': '🔐',
+        'vegetable-grower': '🥬',
+        'commodity-expert': '📦',
+        'plant-protection': '🌿',
+        'management': '📊'
+      };
+      return icons[moduleId] || '📁';
+    }
+
+    // Show module flow graph
+    async function showModuleGraph(moduleId) {
+      try {
+        const response = await fetch(`${API_BASE}/flow/${moduleId}?source=${currentSource}`);
+        const { nodes, edges } = await response.json();
+
+        // Generate Mermaid diagram
+        let diagram = 'graph TD\n';
+        edges.forEach(edge => {
+          const fromLabel = nodes.find(n => n.id === edge.from)?.label || edge.from;
+          const toLabel = nodes.find(n => n.id === edge.to)?.label || edge.to;
+          diagram += `  ${edge.from}["${fromLabel}"] --> ${edge.to}["${toLabel}"]\n`;
+        });
+
+        // Show graph view
+        document.getElementById('graphView').style.display = 'block';
+        document.getElementById('editor').style.display = 'none';
+
+        const graphDiv = document.getElementById('flowGraph');
+        graphDiv.innerHTML = diagram;
+        graphDiv.removeAttribute('data-processed');
+
+        await mermaid.run({ nodes: [graphDiv] });
+
+        updateStatus(`Showing flow for module: ${moduleId}`);
+      } catch (error) {
+        updateStatus('Error loading flow: ' + error.message, 'error');
+      }
+    }
+
+    // Toggle between graph and editor
+    document.getElementById('viewToggle').addEventListener('click', () => {
+      const graphView = document.getElementById('graphView');
+      const editorView = document.getElementById('editor');
+
+      if (graphView.style.display === 'none') {
+        graphView.style.display = 'block';
+        editorView.style.display = 'none';
+      } else {
+        graphView.style.display = 'none';
+        editorView.style.display = 'block';
+      }
+    });
+
+
+    // Hide technical frontmatter fields (entire block)
+    function hideTechnicalFields() {
+      const content = editor.getValue();
+      const lines = content.split('\n');
+
+      let frontmatterStart = -1;
+      let frontmatterEnd = -1;
+
+      for (let i = 0; i < lines.length; i++) {
+        if (lines[i].trim() === '---') {
+          if (frontmatterStart === -1) {
+            frontmatterStart = i + 1; // line after first ---
+          } else {
+            frontmatterEnd = i + 1; // line after second ---
+            break;
+          }
+        }
+      }
+
+      if (frontmatterStart !== -1 && frontmatterEnd !== -1) {
+        // Hide everything between the two --- lines (including them)
+        setTimeout(() => {
+          editor.setHiddenAreas([
+            {
+              startLineNumber: frontmatterStart,
+              startColumn: 1,
+              endLineNumber: frontmatterEnd - 1,
+              endColumn: 1
+            }
+          ]);
+        }, 200);
+      }
+    }
+
+
+
+    // Load specs list
+    async function loadSpecs() {
+      try {
+        const response = await fetch(`${API_BASE}/specs?source=${currentSource}`);
+        const specs = await response.json();
+
+        const specsList = document.getElementById('specsList');
+        specsList.innerHTML = specs.map(spec =>
+          `<li class="spec-item" data-spec="${spec}">${spec}</li>`
+        ).join('');
+
+        // Add click handlers
+        document.querySelectorAll('.spec-item').forEach(item => {
+          item.addEventListener('click', () => loadSpec(item.dataset.spec));
+        });
+
+        updateStatus(`Loaded ${specs.length} specifications from ${currentSource}`);
+      } catch (error) {
+        updateStatus('Error loading specs: ' + error.message, 'error');
+      }
+    }
+
+    // Load spec content
+    async function loadSpec(filename) {
+      try {
+        const response = await fetch(`${API_BASE}/specs/${currentSource}/${filename}`);
+        const data = await response.json();
+
+        currentSpec = filename;
+        originalContent = data.content;
+        editor.setValue(data.content);
+
+        // Extract screenId from content
+        const screenIdMatch = data.content.match(/screenId:\s*([^\n]+)/);
+        currentScreenId = screenIdMatch ? screenIdMatch[1].trim() : null;
+
+        // Switch to editor view
+        document.getElementById('graphView').style.display = 'none';
+        document.getElementById('editor').style.display = 'block';
+
+        // Update active state
+        document.querySelectorAll('.screen-item').forEach(item => {
+          item.classList.toggle('active', item.dataset.filename === filename);
+        });
+
+        document.getElementById('saveBtn').disabled = true;
+        document.getElementById('codeGenBtn').disabled = false;
+
+        // Check if code exists
+        if (currentScreenId) {
+          checkCodeExists(currentScreenId);
+        }
+
+        // Hide technical frontmatter fields
+        hideTechnicalFields();
+
+        updateStatus('Loaded: ' + filename);
+      } catch (error) {
+        updateStatus('Error loading spec: ' + error.message, 'error');
+      }
+    }
+
+    // Save spec
+    async function saveSpec() {
+      if (!currentSpec) return;
+
+      try {
+        const content = editor.getValue();
+        const response = await fetch(`${API_BASE}/specs/${currentSource}/${currentSpec}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          originalContent = content;
+          document.getElementById('saveBtn').disabled = true;
+          updateStatus('Saved: ' + currentSpec, 'success');
+        } else {
+          updateStatus('Error saving: ' + data.error, 'error');
+        }
+      } catch (error) {
+        updateStatus('Error saving spec: ' + error.message, 'error');
+      }
+    }
+
+    // Load services
+    async function loadServices() {
+      try {
+        const response = await fetch(`${API_BASE}/services`);
+        services = await response.json();
+
+        const servicesTree = document.getElementById('servicesTree');
+        servicesTree.innerHTML = services.map(service => `
+          <div class="service-group">
+            <div class="service-name">${service.name}</div>
+            <ul class="service-methods">
+              ${service.methods.map(method =>
+          `<li class="service-method" data-service="${service.name}" data-method="${method}">${method}</li>`
+        ).join('')}
+            </ul>
+          </div>
+        `).join('');
+
+        // Add click handlers to insert service references
+        document.querySelectorAll('.service-method').forEach(item => {
+          item.addEventListener('click', () => {
+            const serviceName = item.dataset.service;
+            const methodName = item.dataset.method;
+            const text = `${serviceName}.${methodName}`;
+
+            const selection = editor.getSelection();
+            editor.executeEdits('', [{
+              range: selection,
+              text: text
+            }]);
+            editor.focus();
+          });
+        });
+
+      } catch (error) {
+        updateStatus('Error loading services: ' + error.message, 'error');
+      }
+    }
+
+    // Update status bar
+    function updateStatus(message, type = '') {
+      const statusBar = document.getElementById('statusBar');
+      statusBar.textContent = message;
+      statusBar.className = 'status-bar' + (type ? ' ' + type : '');
+
+      if (type === 'success' || type === 'error') {
+        setTimeout(() => {
+          statusBar.className = 'status-bar';
+          statusBar.textContent = 'Ready';
+        }, 3000);
+      }
+    }
+
+    // Check if code exists for a spec
+    async function checkCodeExists(screenId) {
+      try {
+        const response = await fetch(`${API_BASE}/code-exists/${screenId}`);
+        const data = await response.json();
+        document.getElementById('previewBtn').disabled = !data.exists;
+      } catch (error) {
+        console.error('Error checking code existence:', error);
+      }
+    }
+
+    // Generate code from spec
+    async function generateCode() {
+      if (!currentSpec) return;
+
+      try {
+        updateStatus('Generating code...', '');
+        const content = editor.getValue();
+        const response = await fetch(`${API_BASE}/generate-code`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            source: currentSource,
+            filename: currentSpec,
+            content
+          })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          updateStatus(`Code generated in ${data.featureDir}`, 'success');
+          document.getElementById('previewBtn').disabled = false;
+
+          // If was in drafts, reload from screens
+          if (currentSource === 'drafts') {
+            currentSource = 'screens';
+            document.getElementById('sourceSelector').value = 'screens';
+            await loadSpecs();
+            await loadSpec(currentSpec);
+          }
+        } else {
+          updateStatus('Error generating code: ' + data.error, 'error');
+        }
+      } catch (error) {
+        updateStatus('Error generating code: ' + error.message, 'error');
+      }
+    }
+
+    // Preview screen
+    function previewScreen() {
+      if (!currentScreenId) return;
+      updateStatus('Preview functionality coming soon...', '');
+      // TODO: Implement preview (could open Expo app or web preview)
+    }
+
+    // Source selector handler
+    document.getElementById('sourceSelector').addEventListener('change', (e) => {
+      currentSource = e.target.value;
+      currentSpec = null;
+      currentScreenId = null;
+      document.getElementById('codeGenBtn').disabled = true;
+      document.getElementById('previewBtn').disabled = true;
+      loadSpecs();
+    });
+
+    // Button handlers
+    document.getElementById('saveBtn').addEventListener('click', saveSpec);
+    document.getElementById('codeGenBtn').addEventListener('click', generateCode);
+    document.getElementById('previewBtn').addEventListener('click', previewScreen);
+
+    // Keyboard shortcut: Cmd/Ctrl + S
+    document.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        e.preventDefault();
+        if (!document.getElementById('saveBtn').disabled) {
+          saveSpec();
+        }
+      }
+    });
+  </script>
+</body>
+
+</html>

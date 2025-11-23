@@ -1,13 +1,3 @@
----
-screenId: protection-crop-form
-title: "Plant Protection Form"
-version: 2
-uiTarget: "react-native"
-status: "draft"
-permissions:
-  required: ["PROTECTION_CROP_CREATE", "PROTECTION_CROP_EDIT"]
----
-
 # Plant Protection Form (DiseaseMonitoring)
 
 Interface for creating or editing a disease report. Supports offline mode.

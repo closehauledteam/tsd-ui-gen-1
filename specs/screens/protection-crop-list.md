@@ -1,13 +1,3 @@
----
-screenId: protection-crop-list
-title: "Plant Protection List"
-version: 1
-uiTarget: "react-native"
-status: "draft"
-permissions:
-  required: ["PROTECTION_CROP_VIEW"]
----
-
 # Plant Protection List (DiseaseMapTab)
 
 Main dashboard for viewing disease reports. Supports filtering and sorting.

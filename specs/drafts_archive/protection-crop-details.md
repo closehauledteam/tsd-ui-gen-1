@@ -6,6 +6,9 @@ uiTarget: "react-native"
 status: "draft"
 permissions:
   required: ["PROTECTION_CROP_VIEW"]
+transitions:
+  - target: protection-crop-form
+    label: "Обработка"
 ---
 
 # Plant Protection Details (DiseaseDetailsPage)
